@@ -104,7 +104,6 @@ class EmeraldWaterHeater(WaterHeaterEntity):
         self._hws_uuid = hws_uuid
         self._entry_id = entry_id
         gi = emerald_hws_instance.getInfo(hws_uuid)
-        status = emerald_hws_instance.getFullStatus(hws_uuid)
         # Fall back rather than leaving these None: they land in the device
         # registry, which is last-write-wins across this entity and the energy
         # sensor sharing the same device -- a None from either would blank out
@@ -121,8 +120,10 @@ class EmeraldWaterHeater(WaterHeaterEntity):
             "model": "Hot Water System",
             "serial_number": self._serial_number,
         }
-        self._current_temperature = status.get("last_state").get("temp_current")
-        self._target_temperature = status.get("last_state").get("temp_set")
+        self._current_temperature = emerald_hws_instance.getCurrentTemperature(
+            hws_uuid
+        )
+        self._target_temperature = emerald_hws_instance.getTargetTemperature(hws_uuid)
         self._running = emerald_hws_instance.isOn(hws_uuid)
         self._current_mode = emerald_hws_instance.currentMode(hws_uuid)
         self._operation_list = [
@@ -226,6 +227,10 @@ class EmeraldWaterHeater(WaterHeaterEntity):
             return STATE_PERFORMANCE
         elif mode == 2:
             return STATE_ECO
+        if mode is None:
+            # Nothing reported yet: a unit with no stored state has an empty status
+            # until the first reply arrives, so this is expected, not worth a warning.
+            return None
         # None -> HA reports the state as "unknown" (WaterHeaterEntity's state
         # allows str | None), which is honest about not knowing the mode.
         # Guessing a real operation here would let a user act on a mode the
@@ -296,8 +301,12 @@ class EmeraldWaterHeater(WaterHeaterEntity):
         state = self._emerald_hws.getFullStatus(self._hws_uuid)
 
         if state is not None:
-            self._current_temperature = state.get("last_state").get("temp_current")
-            self._target_temperature = state.get("last_state").get("temp_set")
+            self._current_temperature = self._emerald_hws.getCurrentTemperature(
+                self._hws_uuid
+            )
+            self._target_temperature = self._emerald_hws.getTargetTemperature(
+                self._hws_uuid
+            )
             self._running = self._emerald_hws.isOn(self._hws_uuid)
             self._current_mode = self._emerald_hws.currentMode(self._hws_uuid)
             self._is_heating = self._emerald_hws.isHeating(self._hws_uuid)
