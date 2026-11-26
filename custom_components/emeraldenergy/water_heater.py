@@ -1,6 +1,7 @@
 """Implementation of the Water Heater type for Emerald HWS."""
 
 import logging
+from functools import partial
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -14,6 +15,7 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntityFeature,
 )
 from homeassistant.const import (
+    ATTR_TEMPERATURE,
     CONF_PASSWORD,
     CONF_USERNAME,
     PRECISION_WHOLE,
@@ -141,7 +143,10 @@ class EmeraldWaterHeater(WaterHeaterEntity):
     @property
     def supported_features(self) -> int:
         """Return the list of supported features."""
-        return WaterHeaterEntityFeature.OPERATION_MODE
+        return (
+            WaterHeaterEntityFeature.OPERATION_MODE
+            | WaterHeaterEntityFeature.TARGET_TEMPERATURE
+        )
 
     @property
     def name(self) -> str:
@@ -263,6 +268,22 @@ class EmeraldWaterHeater(WaterHeaterEntity):
     async def async_set_operation_mode(self, operation_mode):
         """Schedule the sync function to set the operation mode."""
         await self._hass.async_add_executor_job(self.set_operation_mode, operation_mode)
+
+    def set_temperature(self, **kwargs) -> None:
+        """Set the target temperature."""
+        if (temperature := kwargs.get(ATTR_TEMPERATURE)) is None:
+            return
+        _LOGGER.info(f"emeraldhws: setting target temperature to {temperature}")
+        _call_hws(
+            "set target temperature",
+            self._emerald_hws.setTargetTemperature,
+            self._hws_uuid,
+            temperature,
+        )
+
+    async def async_set_temperature(self, **kwargs) -> None:
+        """Schedule the sync function to set the target temperature."""
+        await self._hass.async_add_executor_job(partial(self.set_temperature, **kwargs))
 
     async def async_turn_on(self):
         """Turn on the Emerald unit."""

@@ -52,6 +52,10 @@ To keep things consistent, the following mappings have been used between the Eme
 | Boost   | Performance |
 | Quiet   | Eco         |
 
+## Setting the target temperature
+
+The water heater supports `water_heater.set_temperature`. The unit has its own upper limit and pushes the old value back if asked for more than it allows (70 °C went straight back to 60 °C in normal mode), so check the target temperature afterwards rather than assuming it stuck.
+
 ## Usage in Automations
 
 This integration provides several attributes that can be used in automations and templates. Here are some examples:
